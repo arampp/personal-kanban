@@ -1,19 +1,55 @@
 ﻿using MediatR;
 
+using NEventStore;
+using NEventStore.Persistence.Sql;
+using NEventStore.Persistence.Sql.SqlDialects;
+using NEventStore.Serialization.Json;
+
+
 using PersonalKanban.Domain.Board;
 using PersonalKanban.Domain.Card;
 using PersonalKanban.Domain.Column;
 using PersonalKanban.Models;
+using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
+using System.Data;
 
 namespace PersonalKanban;
 
 public static class ServiceRegistrations
 {
-    public static IServiceCollection AddPersonalKanbanServices(this IServiceCollection services)
+    public static IServiceCollection AddPersonalKanbanServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+
+        var eventStore = Wireup.Init()
+            .UsingSqlPersistence(SqliteFactory.Instance, connectionString)
+            .WithDialect(new SqliteDialect())
+            .InitializeStorageEngine()
+            .UsingJsonSerialization()
+            .Build();
+
+        return services.AddPersonalKanbanServices(eventStore);
+    }
+
+    public static IServiceCollection AddPersonalKanbanServicesInMemory(this IServiceCollection services)
+    {
+        var eventStore = Wireup.Init()
+            .UsingInMemoryPersistence()
+            .InitializeStorageEngine()
+            .UsingJsonSerialization()
+            .Build();
+
+        return services.AddPersonalKanbanServices(eventStore);
+    }
+
+    public static IServiceCollection AddPersonalKanbanServices(this IServiceCollection services, IStoreEvents eventStore)
     {
         return services
+            .AddSingleton<IStoreEvents>(eventStore)
             .AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<CardsReadModel>())
             .AddModels();
+
     }
 
     public static Task AddDummyData(this WebApplication app)
@@ -43,5 +79,27 @@ public static class ServiceRegistrations
         cards.ForEach(card => mediator.Publish(card));
         return Task.CompletedTask;
     }
-
 }
+
+public class SQLiteConnectionFactory : IConnectionFactory
+{
+    private readonly string _connectionString;
+
+    public SQLiteConnectionFactory(string connectionString)
+    {
+        _connectionString = connectionString;
+    }
+
+    public Type GetDbProviderFactoryType()
+    {
+        return typeof(SQLiteConnection);
+    }
+
+    public IDbConnection Open()
+    {
+        var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+        return connection;
+    }
+}
+

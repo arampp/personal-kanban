@@ -11,7 +11,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddMudServices();
-builder.Services.AddPersonalKanbanServices();
+builder.Services.AddPersonalKanbanServices(builder.Configuration);
 
 var app = builder.Build();
 

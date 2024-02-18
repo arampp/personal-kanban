@@ -1,5 +1,7 @@
 using MediatR;
 
+using NEventStore;
+
 using PersonalKanban.Domain.Board;
 using PersonalKanban.Domain.Card;
 using PersonalKanban.Domain.Column;
@@ -16,14 +18,16 @@ public class CreateCardTests : IAsyncLifetime
     private readonly INotificationObserver<ColumnCreated> _columnCreated;
     private readonly INotificationObserver<CardCreated> _cardCreated;
     private readonly IMediator _mediator;
+    private readonly IStoreEvents _store;
 
     public CreateCardTests()
     {
-        var context = new TestContext();
-        _boardCreated = context.ObserveNotification<BoardCreated>();
-        _columnCreated = context.ObserveNotification<ColumnCreated>();
-        _cardCreated = context.ObserveNotification<CardCreated>();
-        _mediator = context.BuildMediator();
+        var contextBuilder = TestContext.New();
+        _boardCreated = contextBuilder.ObserveNotification<BoardCreated>();
+        _columnCreated = contextBuilder.ObserveNotification<ColumnCreated>();
+        _cardCreated = contextBuilder.ObserveNotification<CardCreated>();
+        _mediator = contextBuilder.Build().Mediator;
+        _store = contextBuilder.Build().Store;
 
     }
 
@@ -64,6 +68,16 @@ public class CreateCardTests : IAsyncLifetime
         await SendRequest(new CreateCard(" ", null, _columnCreated.Notification!.Id))
             .AndExpectException<RequestFailed>()
             .WithMessage($"*${nameof(CardCreated.Title)}*");
+    }
+
+    [Fact]
+    public async Task Saves_the_event_to_the_store()
+    {
+        await _mediator.Send(new CreateCard("Title", "Description", _columnCreated.Notification!.Id));
+
+        var stream = _store.OpenStream("card", _cardCreated.Notification!.Id.ToString(), 0, int.MaxValue);
+        stream.CommittedEvents.Count.Should().Be(1);
+        stream.CommittedEvents.Single().Body.Should().BeEquivalentTo(_cardCreated.Notification);
     }
 
 }

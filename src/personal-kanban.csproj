@@ -10,7 +10,13 @@
 
   <ItemGroup>
     <PackageReference Include="MediatR" Version="12.2.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.2" />
     <PackageReference Include="MudBlazor" Version="6.15.0" />
+    <PackageReference Include="NEventStore" Version="9.1.1" />
+    <PackageReference Include="NEventStore.Persistence.Sql" Version="9.1.2" />
+    <PackageReference Include="NEventStore.Serialization.Json" Version="9.1.1" />
+    <PackageReference Include="System.Data.SQLite" Version="1.0.118" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
   </ItemGroup>
 
 </Project>

@@ -10,10 +10,11 @@ public class CreateColumnTests
     [Fact]
     public async Task Publishes_a_Column_created_event()
     {
-        var context = new TestContext();
-        var boardCreated = context.ObserveNotification<BoardCreated>();
-        var columnCreated = context.ObserveNotification<ColumnCreated>();
-        var mediator = context.BuildMediator();
+        var contextBuilder = TestContext.New();
+        var boardCreated = contextBuilder.ObserveNotification<BoardCreated>();
+        var columnCreated = contextBuilder.ObserveNotification<ColumnCreated>();
+
+        var mediator = contextBuilder.Build().Mediator;
         await mediator.Send(new CreateBoard("Title", "Description"));
 
 
@@ -27,8 +28,7 @@ public class CreateColumnTests
     [Fact]
     public async Task Throws_if_board_does_not_exist()
     {
-        var context = new TestContext();
-        var mediator = context.BuildMediator();
+        var mediator = TestContext.New().Build().Mediator;
 
         var boardId = Guid.NewGuid();
         var send = async () => await mediator.Send(new CreateColumn("Title", boardId));
