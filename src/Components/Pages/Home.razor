@@ -1,7 +1,109 @@
 ﻿@page "/"
+@using Microsoft.AspNetCore.Components
+@using System.ComponentModel.DataAnnotations
+@using PersonalKanban.Models
+@inject IBoardsProvider BoardsProvider
+@inject IColumnsProvider ColumnsProvider
+@inject ICardsProvider CardsProvider
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Personal Kanban</PageTitle>
 
-<h1>Hello, world!</h1>
+<MudDropContainer T="Card" Items="_cards" ItemsSelector="@((card,dropzone) => card.ColumnId.ToString() == dropzone)"
+    ItemDropped="ItemUpdated" Class="d-flex flex-row">
+    <ChildContent>
+        @foreach (var column in _columns)
+        {
+            <MudPaper Elevation="0" Width="224px" MinHeight="400px"
+                Class="pa-4 ma-4 d-flex flex-column mud-background-gray rounded-lg">
+                <MudDropZone T="Card" Identifier="@column.Id.ToString()"
+                    Class="rounded mud-background-gray mud-height-full">
+                    <MudText>@column.Title</MudText>
+                </MudDropZone>
 
-Welcome to your new app.
+                @if (column.NewTaskOpen)
+                {
+                    <MudPaper Elevation="25" Class="pa-2 rounded-lg">
+                        <MudTextField @bind-Value="column.NewCardName" Placeholder="New Task" DisableUnderLine="true"
+                            Margin="Margin.Dense" Class="mx-2 mt-n2" AutoFocus Immediate MaxLines="4" AutoGrow
+                            OnKeyUp="@(async (e) => await CheckSubmitOrCancel(e, column))">
+                        </MudTextField>
+                        <MudButton OnClick="@(async () => await AddCard(column))" Size="Size.Small" Color="Color.Primary"
+                            FullWidth="true" Disabled="@(!column.NewCardNameValid)">Add Card
+                        </MudButton>
+                    </MudPaper>
+                }
+                else
+                {
+                    <MudButton OnClick="@(() => column.NewTaskOpen = !column.NewTaskOpen)"
+                        StartIcon="@Icons.Material.Filled.Add" FullWidth="true" Class="rounded-lg py-2">Add Card</MudButton>
+                }
+            </MudPaper>
+
+        }
+    </ChildContent>
+    <ItemRenderer>
+        <PkCard Model="@context"></PkCard>
+    </ItemRenderer>
+</MudDropContainer>
+
+@code {
+    private Board? _board;
+    private IEnumerable<ColumnViewModel> _columns = [];
+    private IEnumerable<Card> _cards = [];
+
+    protected override Task OnInitializedAsync()
+    {
+        _board = BoardsProvider.Boards.First();
+        _columns = _board.Columns.Select(c => ColumnsProvider.GetById(c)).Select(c => new ColumnViewModel(c)).ToList();
+        _cards = _columns.SelectMany(column => column.CardIds.Select(cardId => CardsProvider.GetById(cardId)));
+
+        return Task.CompletedTask;
+    }
+
+    private void ItemUpdated(MudItemDropInfo<Card> dropItem)
+    {
+        @* dropItem.Item.Category = dropItem.DropzoneIdentifier; *@
+        Console.WriteLine($"Item {dropItem.Item.Title} moved to {dropItem.DropzoneIdentifier}");
+    }
+
+    private async Task CheckSubmitOrCancel(KeyboardEventArgs e, ColumnViewModel column)
+    {
+        if (e.Key == "Enter" && column.NewCardNameValid)
+        {
+            await AddCard(column);
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelAddCard(column);
+        }
+    }
+
+    private async Task AddCard(ColumnViewModel column)
+    {
+        if (column.NewCardName == null)
+        {
+            throw new ArgumentNullException(nameof(column.NewCardName));
+        }
+
+        await CardsProvider.AddCard(column.NewCardName, column.Title, column.Id);
+        column.NewCardName = null;
+        column.NewTaskOpen = false;
+    }
+
+    private void CancelAddCard(ColumnViewModel column)
+    {
+        column.NewCardName = null;
+        column.NewTaskOpen = false;
+    }
+
+    private class ColumnViewModel(Column column)
+    {
+        public Guid Id => column.Id;
+        public string Title => column.Title;
+        public IEnumerable<Guid> CardIds => column.Cards;
+        public string? NewCardName { get; set; }
+        public bool NewCardNameValid => !string.IsNullOrWhiteSpace(NewCardName);
+        public bool NewTaskOpen { get; set; }
+    }
+
+}

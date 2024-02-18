@@ -1,0 +1,14 @@
+
+@using Microsoft.AspNetCore.Components
+@using System.ComponentModel.DataAnnotations
+@using PersonalKanban.Models
+
+<MudCard Class="pa-2 my-2">
+    <MudCardHeader>@Model.Title</MudCardHeader>
+</MudCard>
+
+@code {
+
+    [Parameter]
+    public Card Model { get; set; } = null!;
+}

@@ -1,5 +1,8 @@
-using personal_kanban.Components;
+using PersonalKanban.Components;
 using MudBlazor.Services;
+using PersonalKanban;
+using MediatR;
+using PersonalKanban.Domain.Card;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +11,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddMudServices();
+builder.Services.AddPersonalKanbanServices();
 
 var app = builder.Build();
 
@@ -26,5 +30,6 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+await app.AddDummyData();
 
 app.Run();

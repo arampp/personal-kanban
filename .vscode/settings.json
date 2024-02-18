@@ -1,3 +1,7 @@
 {
-    "dotnet.defaultSolution": "personal-kanban.sln"
+    "dotnet.defaultSolution": "personal-kanban.sln",
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": true,
 }
