@@ -1,3 +1,5 @@
+using NEventStore;
+
 using PersonalKanban.Domain.Board;
 
 using static PersonalKanbanTest.Util.MediatRTestHelper;
@@ -7,13 +9,19 @@ namespace PersonalKanbanTest.Domain.Board;
 public class CreateBoardTests
 {
     [Fact]
-    public async void Publishes_a_Board_created_event()
+    public async void Publishes_a_Board_created_event_and_saves_it()
     {
-        var notification = await SendRequest(new CreateBoard("Title", "Description"))
-            .AndExpectNotification<BoardCreated>();
+        var testContextBuilder = TestContext.New();
+        var boardCreated = testContextBuilder.ObserveNotification<BoardCreated>();
+        var testContext = testContextBuilder.Build();
 
+        await testContext.Mediator.Send(new CreateBoard("Title", "Description"));
+
+        var notification = boardCreated.Notification!;
         notification.Title.Should().Be("Title");
         notification.Description.Should().Be("Description");
+        using var stream = testContext.Store.OpenStream(notification.Id);
+        stream.CommittedEvents.Single().Body.Should().Be(notification);
     }
 
     [Fact]
