@@ -3,8 +3,6 @@ using NEventStore;
 using PersonalKanban.Domain.Board;
 using PersonalKanban.Domain.Column;
 
-using static PersonalKanbanTest.Util.MediatRTestHelper;
-
 namespace PersonalKanbanTest.Domain.Column;
 
 public class CreateColumnTests

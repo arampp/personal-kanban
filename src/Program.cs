@@ -1,8 +1,6 @@
 using PersonalKanban.Components;
 using MudBlazor.Services;
 using PersonalKanban;
-using MediatR;
-using PersonalKanban.Domain.Card;
 
 var builder = WebApplication.CreateBuilder(args);
 

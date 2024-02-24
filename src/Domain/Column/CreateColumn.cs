@@ -2,8 +2,6 @@
 
 using NEventStore;
 
-using PersonalKanban.Domain.Board;
-
 namespace PersonalKanban.Domain.Column;
 
 

@@ -6,10 +6,6 @@ using PersonalKanban.Domain.Board;
 using PersonalKanban.Domain.Card;
 using PersonalKanban.Domain.Column;
 
-using Xunit;
-
-using static PersonalKanbanTest.Util.MediatRTestHelper;
-
 namespace PersonalKanbanTest.Domain.Card;
 
 public class CreateCardTests : IAsyncLifetime
@@ -65,9 +61,12 @@ public class CreateCardTests : IAsyncLifetime
     [Fact]
     public async Task Fails_if_title_is_empty()
     {
-        await SendRequest(new CreateCard(" ", null, _columnCreated.Notification!.Id))
-            .AndExpectException<RequestFailed>()
-            .WithMessage($"*${nameof(CardCreated.Title)}*");
+        var sendWithEmptyTitle = () => _mediator.Send(new CreateCard(" ", null, _columnCreated.Notification!.Id));
+
+        await sendWithEmptyTitle
+        .Should()
+        .ThrowAsync<RequestFailed>()
+        .WithMessage($"*${nameof(CardCreated.Title)}*");
     }
 
     [Fact]
