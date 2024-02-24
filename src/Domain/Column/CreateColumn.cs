@@ -1,5 +1,7 @@
 ﻿using MediatR;
 
+using NEventStore;
+
 using PersonalKanban.Domain.Board;
 
 namespace PersonalKanban.Domain.Column;
@@ -8,7 +10,7 @@ namespace PersonalKanban.Domain.Column;
 public record CreateColumn(string Title, Guid boardId) : IRequest;
 public record ColumnCreated(Guid Id, string Title, Guid BoardId) : INotification;
 
-public class CreateColumnCommandHandler(IPublisher publisher, BoardsReadModel boards) : IRequestHandler<CreateColumn>
+public class CreateColumnCommandHandler(IPublisher publisher, BoardsReadModel boards, IStoreEvents store) : IRequestHandler<CreateColumn>
 {
 
     public async Task Handle(CreateColumn request, CancellationToken cancellationToken)
@@ -21,6 +23,14 @@ public class CreateColumnCommandHandler(IPublisher publisher, BoardsReadModel bo
         {
             throw new RequestFailed($"Board with id {request.boardId} does not exist");
         }
-        await publisher.Publish(new ColumnCreated(Guid.NewGuid(), request.Title, request.boardId), cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var columnCreated = new ColumnCreated(Guid.NewGuid(), request.Title, request.boardId);
+        using (var stream = store.CreateStream(columnCreated.Id))
+        {
+            stream.Add(new EventMessage { Body = columnCreated });
+            stream.CommitChanges(Guid.NewGuid());
+        }
+
+        await publisher.Publish(columnCreated, cancellationToken);
     }
 }

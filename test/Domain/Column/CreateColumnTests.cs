@@ -1,3 +1,5 @@
+using NEventStore;
+
 using PersonalKanban.Domain.Board;
 using PersonalKanban.Domain.Column;
 
@@ -8,13 +10,14 @@ namespace PersonalKanbanTest.Domain.Column;
 public class CreateColumnTests
 {
     [Fact]
-    public async Task Publishes_a_Column_created_event()
+    public async Task Publishes_a_Column_created_event_and_saves_it()
     {
         var contextBuilder = TestContext.New();
         var boardCreated = contextBuilder.ObserveNotification<BoardCreated>();
         var columnCreated = contextBuilder.ObserveNotification<ColumnCreated>();
 
-        var mediator = contextBuilder.Build().Mediator;
+        var testContext = contextBuilder.Build();
+        var mediator = testContext.Mediator;
         await mediator.Send(new CreateBoard("Title", "Description"));
 
 
@@ -23,6 +26,8 @@ public class CreateColumnTests
 
         columnCreated.Notification!.Title.Should().Be("Title");
         columnCreated.Notification!.Id.Should().NotBeEmpty();
+        using var stream = testContext.Store.OpenStream(columnCreated.Notification!.Id);
+        stream.CommittedEvents.Single().Body.Should().Be(columnCreated.Notification);
     }
 
     [Fact]
