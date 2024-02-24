@@ -26,7 +26,7 @@ public class CreateColumnTests
     }
 
     [Fact]
-    public async Task Throws_if_board_does_not_exist()
+    public async Task Fails_if_board_does_not_exist()
     {
         var mediator = TestContext.New().Build().Mediator;
 
@@ -36,11 +36,13 @@ public class CreateColumnTests
         await send.Should().ThrowAsync<RequestFailed>().WithMessage($"*{boardId}*");
     }
 
-    // [Fact]
-    // public async void Fails_if_title_is_empty()
-    // {
-    //     await SendRequest(new CreateColumn(" "))
-    //         .AndExpectException<RequestFailed>()
-    //         .WithMessage($"*${nameof(ColumnCreated.Title)}*");
-    // }
+    [Fact]
+    public async void Fails_if_title_is_empty()
+    {
+        var mediator = TestContext.New().Build().Mediator;
+        var createWithEmptyTitle = () => mediator.Send(new CreateColumn(" ", Guid.NewGuid()));
+        await createWithEmptyTitle.Should()
+        .ThrowAsync<RequestFailed>()
+        .WithMessage($"*${nameof(ColumnCreated.Title)}*");
+    }
 }
