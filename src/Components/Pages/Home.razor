@@ -2,23 +2,30 @@
 @using Microsoft.AspNetCore.Components
 @using System.ComponentModel.DataAnnotations
 @using PersonalKanban.Models
+@using MediatR;
+@using Domain.Card;
 @inject IBoardsProvider BoardsProvider
 @inject IColumnsProvider ColumnsProvider
 @inject ICardsProvider CardsProvider
+@inject ILogger<Home> Logger
+@inject ISender sender;
 
 <PageTitle>Personal Kanban</PageTitle>
 
 <MudDropContainer T="Card" Items="_cards" ItemsSelector="@((card,dropzone) => card.ColumnId.ToString() == dropzone)"
-    ItemDropped="ItemUpdated" Class="d-flex flex-row">
+    ItemDropped="ItemMoved" Class="d-flex flex-row">
     <ChildContent>
         @foreach (var column in _columns)
         {
-            <MudPaper Elevation="0" Width="224px" MinHeight="400px"
-                Class="pa-4 ma-4 d-flex flex-column mud-background-gray rounded-lg">
-                <MudDropZone T="Card" Identifier="@column.Id.ToString()"
-                    Class="rounded mud-background-gray mud-height-full">
-                    <MudText>@column.Title</MudText>
-                </MudDropZone>
+            <MudPaper Elevation="0" Width="250px" MinHeight="400px"
+                Class="pa-2 ma-2 d-flex flex-column mud-background-gray rounded-lg">
+                <MudList Clickable="true" Class="d-flex flex-column mud-height-full">
+                    <MudListSubheader>@column.Title</MudListSubheader>
+                    <MudDropZone T="Card" Identifier="@column.Id.ToString()"
+                        Class="rounded mud-background-gray mud-height-full" AllowReorder="true">
+                    </MudDropZone>
+
+                </MudList>
 
                 @if (column.NewTaskOpen)
                 {
@@ -42,7 +49,9 @@
         }
     </ChildContent>
     <ItemRenderer>
-        <PkCard Model="@context"></PkCard>
+        <MudListItem>
+            <PkCard Model="@context" />
+        </MudListItem>
     </ItemRenderer>
 </MudDropContainer>
 
@@ -54,16 +63,33 @@
     protected override Task OnInitializedAsync()
     {
         _board = BoardsProvider.Boards.First();
-        _columns = _board.Columns.Select(c => ColumnsProvider.GetById(c)).Select(c => new ColumnViewModel(c)).ToList();
+        _columns = _board.Columns.Select(c => ColumnsProvider.GetById(c).IfNone(() => new Column
+            {
+                Id = Guid.Empty,
+                Title =
+            "Unknown"
+            }))
+        .Select(c => new ColumnViewModel(c)).ToList();
         _cards = _columns.SelectMany(column => column.CardIds.Select(cardId => CardsProvider.GetById(cardId)));
 
         return Task.CompletedTask;
     }
 
-    private void ItemUpdated(MudItemDropInfo<Card> dropItem)
+    private async Task ItemMoved(MudItemDropInfo<Card> dropItem)
     {
-        @* dropItem.Item.Category = dropItem.DropzoneIdentifier; *@
-        Console.WriteLine($"Item {dropItem.Item.Title} moved to {dropItem.DropzoneIdentifier}");
+        if (dropItem.Item == null)
+        {
+            Logger.LogWarning("ItemMoved: Item is null");
+            return;
+        }
+        var request = new MoveCard
+            {
+                Card = dropItem.Item.Id,
+                SourceColumn = dropItem.Item.ColumnId,
+                TargetColumn = Guid.Parse(dropItem.DropzoneIdentifier),
+                Position = dropItem.IndexInZone
+            };
+        await sender.Send(request);
     }
 
     private async Task CheckSubmitOrCancel(KeyboardEventArgs e, ColumnViewModel column)

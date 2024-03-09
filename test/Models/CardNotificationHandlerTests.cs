@@ -21,4 +21,31 @@ public class CardNotificationHandlerTests
         card.Description.Should().Be("Test description");
     }
 
+    [Fact]
+    public async Task Updates_card_id_on_card_move()
+    {
+        var cardsCollection = new CardsReadModel();
+        var card = new Card
+        {
+            Id = Guid.NewGuid(),
+            Title = "Test",
+            Description = "Test description",
+            ColumnId = Guid.NewGuid()
+        };
+        cardsCollection.Add(card);
+
+        var handler = new CardNotificationHandler(cardsCollection);
+        var notification = new CardMoved
+        {
+            Card = card.Id,
+            SourceColumn = card.ColumnId,
+            TargetColumn = Guid.NewGuid(),
+            Position = 0
+        };
+
+        await handler.Handle(notification, CancellationToken.None);
+
+        card.ColumnId.Should().Be(notification.TargetColumn);
+    }
+
 }
