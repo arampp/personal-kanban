@@ -19,7 +19,7 @@ public class CreateBoardCommandHandler(IPublisher publisher, IStoreEvents store)
         }
         cancellationToken.ThrowIfCancellationRequested();
         var boardCreated = new BoardCreated(Guid.NewGuid(), request.Title, request.Description ?? "");
-        using (var stream = store.CreateStream(boardCreated.Id))
+        using (var stream = store.CreateStream("board", boardCreated.Id))
         {
             stream.Add(new EventMessage { Body = boardCreated });
             stream.CommitChanges(Guid.NewGuid());

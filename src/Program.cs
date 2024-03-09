@@ -28,6 +28,6 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-await app.AddDummyData();
+await app.ReplayEvents();
 
 app.Run();

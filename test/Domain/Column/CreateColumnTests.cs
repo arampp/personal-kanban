@@ -24,7 +24,7 @@ public class CreateColumnTests
 
         columnCreated.Notification!.Title.Should().Be("Title");
         columnCreated.Notification!.Id.Should().NotBeEmpty();
-        using var stream = testContext.Store.OpenStream(columnCreated.Notification!.Id);
+        using var stream = testContext.Store.OpenStream("column", columnCreated.Notification!.Id);
         stream.CommittedEvents.Single().Body.Should().Be(columnCreated.Notification);
     }
 

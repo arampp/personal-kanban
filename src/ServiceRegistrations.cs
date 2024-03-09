@@ -24,7 +24,7 @@ public static class ServiceRegistrations
 
         var eventStore = Wireup.Init()
             .UsingSqlPersistence(SqliteFactory.Instance, connectionString)
-            .WithDialect(new SqliteDialect())
+            .WithDialect(new MicrosoftDataSqliteDialect())
             .InitializeStorageEngine()
             .UsingJsonSerialization()
             .Build();
@@ -50,6 +50,71 @@ public static class ServiceRegistrations
             .AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<CardsReadModel>())
             .AddModels();
 
+    }
+
+    public async static Task ReplayEvents(this WebApplication app)
+    {
+        var store = app.Services.GetRequiredService<IStoreEvents>();
+        var mediator = app.Services.GetRequiredService<IMediator>();
+        var boardEvents = store.Advanced.GetFrom("board", DateTime.MinValue)
+            .SelectMany(commit => commit.Events).ToList();
+        boardEvents.ForEach(e => mediator.Publish(e.Body));
+
+        if (boardEvents.Count == 0)
+        {
+            var createBoard = new CreateBoard("Kanban Board", "A board to visualize work");
+            // var board = new BoardCreated(Guid.Parse("a9bb2cfe-5a5c-4b81-9b20-9232eebf9744"), "Kanban Board", "A board to visualize work");
+            await mediator.Send(createBoard);
+            boardEvents = store.Advanced.GetFrom("board", DateTime.MinValue)
+                .SelectMany(commit => commit.Events).ToList();
+        }
+
+        var columnEvents = store.Advanced.GetFrom("column", DateTime.MinValue).ToList()
+            .SelectMany(commit => commit.Events).ToList();
+
+        if (columnEvents.Count == 0)
+        {
+            var board = app.Services.GetRequiredService<IBoardsProvider>().Boards.First();
+            var todo = new CreateColumn("To Do", board.Id);
+            var doing = new CreateColumn("Doing", board.Id);
+            var done = new CreateColumn("Done", board.Id);
+            await mediator.Send(todo);
+            await mediator.Send(doing);
+            await mediator.Send(done);
+
+            columnEvents = store.Advanced.GetFrom("column", DateTime.MinValue).ToList()
+                .SelectMany(commit => commit.Events).ToList();
+        }
+        else
+        {
+            columnEvents.ForEach(e => mediator.Publish(e.Body));
+        }
+
+
+        var cardEvents = store.Advanced.GetFrom("card", DateTime.MinValue).ToList()
+            .SelectMany(commit => commit.Events).ToList();
+        cardEvents.ForEach(e => mediator.Publish(e.Body));
+
+        var boardsReadModel = app.Services.GetRequiredService<BoardsReadModel>();
+        if (!boardsReadModel.Boards.Any())
+        {
+            await app.CreateBoard();
+        }
+    }
+    private async static Task CreateBoard(this WebApplication app)
+    {
+        var boardsReadModel = app.Services.GetRequiredService<BoardsReadModel>();
+        var mediator = app.Services.GetRequiredService<IMediator>();
+        var board = new BoardCreated(Guid.NewGuid(), "Kanban Board", "A board to visualize work");
+        await mediator.Publish(board);
+
+        var boardId = boardsReadModel.Boards.First().Id;
+        var todo = new ColumnCreated(Guid.NewGuid(), "To Do", boardId);
+        var doing = new ColumnCreated(Guid.NewGuid(), "Doing", boardId);
+        var done = new ColumnCreated(Guid.NewGuid(), "Done", boardId);
+        await mediator.Publish(todo);
+        await mediator.Publish(doing);
+        await mediator.Publish(done);
     }
 
     public static Task AddDummyData(this WebApplication app)

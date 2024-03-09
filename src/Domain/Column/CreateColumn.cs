@@ -23,7 +23,7 @@ public class CreateColumnCommandHandler(IPublisher publisher, BoardsReadModel bo
         }
         cancellationToken.ThrowIfCancellationRequested();
         var columnCreated = new ColumnCreated(Guid.NewGuid(), request.Title, request.boardId);
-        using (var stream = store.CreateStream(columnCreated.Id))
+        using (var stream = store.CreateStream("column", columnCreated.Id))
         {
             stream.Add(new EventMessage { Body = columnCreated });
             stream.CommitChanges(Guid.NewGuid());
